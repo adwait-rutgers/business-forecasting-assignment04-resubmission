@@ -1,0 +1,273 @@
+---
+title: "Assignment 04"
+author: "Adwait Kalsekar"
+date: "2023-10-07"
+output: html_document
+---
+
+# Dataset Information
+
+The dataset chosen for this assignment consists of the House Price Index for the State of New Jersey over the last 50 years calculated quarterly.
+
+The time series of the data set shows seasonality in the House Price Index every 10 years. The HPI grows exponentially over the decade and drops towards the start of a new decade. This seasonality holds true for the entire time series data.
+
+Looking at the time series data it can also be inferred that there has been a visible trend in the growth of HPI over the last 50 years. The HPI has increased exponentially since the year 1975 to the year 2023. 
+
+Looking at the time series data, certain forecasting models applied have predicted similar future data points that account for the existing trend and seasonality.
+
+# Exploring the Dataset
+
+## Loading the Dataset and Converting to Time Series
+
+
+```{r}
+# Loading Libraries
+library(fpp)
+library(fpp2)
+library(TTR)
+
+# Reading Data from CSV File
+df = read.csv("NJ_HPI.csv")
+str(df)
+
+# Converting DATE column to R Date Type
+df$DATE <- as.Date(df$DATE)
+str(df)
+df
+
+# Converting to Time Series data
+df_ts = ts(df$HPI.NJ, start=c(1975, 1), end=c(2023, 2), frequency=4)
+df_ts
+
+# Attributes and Structure
+attributes(df_ts)
+str(df_ts)
+
+```
+
+## Plotting and Observing the Auto Correlation Function
+
+```{r}
+# Plotting ACF
+Acf(df_ts)
+summary(df_ts)
+plot(df_ts)
+
+```
+
+# Forecasting
+
+```{r}
+
+# Mean Forecast
+mean_forecast <- meanf(df_ts, 10)
+plot(mean_forecast)
+
+```
+
+### Mean Forecast: 
+It produces visually inaccurate results as it calculates the mean of all the data points in the time series data.
+
+```{r}
+
+# Naive
+naive_forecast <- naive(df_ts, 10)
+plot(naive_forecast)
+
+```
+
+### Naive Forecast: 
+It accounts only for the most recent data point and forecasts it for the next data points. It can be used for a small data set without any trend or seasonality forecasted for a small time period. In the time series data used in this assignment, the naive method provides inaccurate results.
+
+```{r}
+# Random Walk
+rwf_forecast <- rwf(df_ts, 10)
+plot(rwf_forecast)
+
+# Random Walk with Drift
+rwf_forecast <- rwf(df_ts, 10, drift=TRUE)
+plot(rwf_forecast)
+
+```
+### Random walk with a drift: 
+This model considers the most recent data point with a drift term and hence can provide good results for a short time period. In this case, it shows good results as it accounts for the growing trend.
+
+```{r}
+# Seasonal Naive
+snaive_forecast <- snaive(df_ts, 10)
+plot(snaive_forecast)
+
+```
+
+### Seasonal Naive: 
+This model is perfect for a highly seasonal data without accounting for the trend and gives inaccurate results in this case.
+
+```{r}
+# Moving Averages
+MA5_forecast <- ma(df_ts,order=5)
+plot(MA5_forecast)
+MA9_forecast <- ma(df_ts,order=9)
+plot(MA9_forecast)
+```
+
+### Moving Averages : this model adds weights to the data points with a higher weight to the recent data points and hence can provide a better prediction.
+
+## Exploring the Naive and Mean Forecasts
+
+```{r}
+
+# Visualising Moving Averages Separately
+plot(df_ts)
+lines(MA5_forecast,col="Pink")
+lines(MA9_forecast,col="Blue")
+
+# Comparing Various Visualisations 
+plot(mean_forecast)
+lines(naive_forecast$mean,col="red")
+lines(rwf_forecast$mean,col="green")
+lines(snaive_forecast$mean,col="blue")
+
+```
+
+## Exponential Smoothing
+
+```{r}
+# Exponential Smoothing
+ets_model <- ets(df_ts)
+plot(ets_model)
+
+```
+
+### ETS: 
+This method applies exponential smoothing to the time series data and predicts the data points. The drawback is that it does not account for trend or seasonality.
+
+```{r}
+
+# HoltWinters
+HW <- HoltWinters(df_ts)
+plot(HW)
+
+# Holt Winters with Different Beta and Gamma Values
+SSE_Simple_1 <- HoltWinters(df_ts,beta=FALSE,gamma=FALSE)
+attributes(SSE_Simple_1)
+plot(SSE_Simple_1)
+SSE_Simple_1$SSE
+
+SSE_Simple_2 <- HoltWinters(df_ts,beta=FALSE,gamma=TRUE)
+attributes(SSE_Simple_2)
+plot(SSE_Simple_2)
+SSE_Simple_2$SSE
+
+SSE_Simple_3 <- HoltWinters(df_ts,beta=TRUE,gamma=FALSE)
+attributes(SSE_Simple_3)
+plot(SSE_Simple_3)
+SSE_Simple_3$SSE
+
+SSE_Simple_4 <- HoltWinters(df_ts,beta=FALSE,gamma=FALSE)
+attributes(SSE_Simple_4)
+plot(SSE_Simple_4)
+SSE_Simple_4$SSE
+
+```
+### Holt Winters: 
+This model is also known as triple exponential smoothing, as it applies exponential smoothing and accounts for trend as well as seasonality and turns out to be the most accurate model for this time series data. 
+It is tuned with different values for its beta and gamma parameters to observe the best fit.
+
+## Exploring the ETS and Holt Winters Models
+
+```{r}
+
+# Forecast for ETS
+ets_forecast <- forecast(ets_model, h=10)
+plot(ets_forecast)
+
+HW_forecast <- forecast(HW, h=10)
+plot(HW_forecast)
+
+SSE_Simple_forecast_1 <- forecast(SSE_Simple_1, h=10)
+plot(SSE_Simple_forecast_1)
+
+SSE_Simple_forecast_2 <- forecast(SSE_Simple_2, h=10)
+plot(SSE_Simple_forecast_2)
+
+SSE_Simple_forecast_3 <- forecast(SSE_Simple_3, h=10)
+plot(SSE_Simple_forecast_3)
+
+SSE_Simple_forecast_4 <- forecast(SSE_Simple_4, h=10)
+plot(SSE_Simple_forecast_4)
+```
+
+## Visualising All the Forecasts in a Single Graph
+
+```{r}
+# Combining Forecasts
+plot(ets_forecast)
+lines(HW_forecast$mean, col="red")
+lines(SSE_Simple_forecast_1$mean, col="green")
+lines(SSE_Simple_forecast_2$mean, col="blue")
+lines(SSE_Simple_forecast_3$mean, col="yellow")
+lines(SSE_Simple_forecast_4$mean, col="orange")
+
+# Combining All Forecasts with the original Time Series
+plot(ets_forecast)
+lines(HW_forecast$mean, col="red")
+lines(SSE_Simple_forecast_1$mean, col="green")
+lines(SSE_Simple_forecast_2$mean, col="violet")
+lines(SSE_Simple_forecast_3$mean, col="purple")
+lines(SSE_Simple_forecast_4$mean, col="yellow")
+lines(mean_forecast$mean, col="pink")
+lines(naive_forecast$mean,col="plum")
+lines(rwf_forecast$mean,col="orange")
+lines(snaive_forecast$mean,col="blue")
+
+
+```
+
+# Checking the Accuracy of our Models and Selecting the Best fit
+
+```{r}
+# Calculating Accuracy 
+accuracy(mean_forecast)
+accuracy(naive_forecast)
+accuracy(rwf_forecast)
+accuracy(snaive_forecast)
+accuracy(ets_forecast)
+accuracy(HW_forecast)
+accuracy(SSE_Simple_forecast_1)
+accuracy(SSE_Simple_forecast_2)
+accuracy(SSE_Simple_forecast_3)
+accuracy(SSE_Simple_forecast_4)
+```
+
+## Accuracy Measures Calculated:
+* Mean Error (ME)
+* Root Mean Squared Error (RMSE)
+* Mean Absolute Error (MAE)
+* Mean Percentage Error (MPE)
+* Mean Absolute Percentage Error (MAPE)
+* Mean Absolute Scaled Error (MASE)
+* Autocorrelation of errors at lag 1 (ACF1)
+
+### Accuracy Measure Selected for Model Comparison: 
+#### Mean Absolute Percentage Error (MAPE)
+
+The mean absolute percentage error (MAPE) measures the average of forecast errors in percentages. It's a helpful accuracy metric to use because many people can understand forecast accuracy in terms of percentages.
+
+For example, a MAPE of 3% means there was a 3% difference between the actual and projected data. Typically, a lower MAPE indicates a higher forecast accuracy.
+
+### MAPE for different Models:
+
+1. Mean Forecast: 88.20295
+2. Naive Forecast: 1.869083
+3. Random Walk Forecast: 1.731568
+4. Simple Naive Forecast: 6.396315
+5. Exponential smoothing Forecast: 1.148609
+6. Holt-Winter Forecast: 1.218338
+7. SSE Simple Forecast: 1.86915
+
+#### Looking at the MAPE for all the models the best models to use for forecasting are:
+* **Exponential Smoothing Forecast**
+* **Holt-Winters Forecast**
+
+But, considering that the Exponential Smoothing Forecast does not account for trend or seasonality, it may provide inaccurate forecasts for a larger time period.
+Hence, the best model for this time series dataset is the **Holt-Winters Forecast.**
